@@ -35,19 +35,13 @@ export function Collection<T extends Constructable>(
       super(...params);
     }
 
-    public static async findMany(
-      q: WhereQuery<InstanceType<T>>
-    ): Promise<InstanceType<T>[]> {
+    public static async findMany(q: WhereQuery<InstanceType<T>>) {
       const docSnap = await getDocs(mergeToQuery(this.colRef, q));
 
-      return docSnap.docs.map((d) =>
-        mergeResult(d, constructor)
-      ) as InstanceType<T>[];
+      return docSnap.docs.map((d) => mergeResult(d, constructor));
     }
 
-    public static async findOne(
-      q: WhereQuery<InstanceType<T>>
-    ): Promise<InstanceType<T>> {
+    public static async findOne(q: WhereQuery<InstanceType<T>>) {
       const result = await this.findMany(q);
       return result[0];
     }
@@ -88,13 +82,13 @@ export function Reference<T extends ReturnType<typeof Collection>>(
     public static entity_type: EntityType = "REFERENCE";
     private static ref: DocumentReference;
 
-    static async get(): Promise<
-      InstanceType<ReturnType<typeof colConstructor["getFactory"]>>
-    > {
+    static async get() {
       const snap = await getDoc(this.ref);
-      return mergeResult(snap, colConstructor.getFactory()) as InstanceType<
-        ReturnType<typeof colConstructor["getFactory"]>
+
+      const factory = colConstructor.getFactory() as ReturnType<
+        T["getFactory"]
       >;
+      return mergeResult(snap, factory);
     }
     static bindRef(ref: DocumentReference) {
       this.ref = ref;
@@ -103,7 +97,12 @@ export function Reference<T extends ReturnType<typeof Collection>>(
   };
 }
 
-function mergeResult(docSnap: DocumentSnapshot, constructor: Constructable) {
+type MergedResult<T extends Constructable> = InstanceType<T>;
+
+function mergeResult<T extends Constructable>(
+  docSnap: DocumentSnapshot,
+  constructor: T
+): MergedResult<T> {
   const schema = {
     ...new constructor(),
     ...constructor.prototype,
@@ -139,10 +138,7 @@ function mergeResult(docSnap: DocumentSnapshot, constructor: Constructable) {
     };
   }, {});
 
-  return {
-    ...data,
-    ref: docSnap.ref,
-  };
+  return data as MergedResult<T>;
 }
 
 function mergeToQuery<T>(collcetionRef: CollectionReference, q: WhereQuery<T>) {
