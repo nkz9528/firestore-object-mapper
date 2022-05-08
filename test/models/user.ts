@@ -1,7 +1,9 @@
-import { Collection } from "../../core";
+import { Collection, Reference } from "../../core";
+import Book from "./book";
 
 class _User {
   name: string;
+  uploaded_books = Collection("uploaded_books", BookRef);
 
   constructor(name: string) {
     this.name = name;
@@ -9,6 +11,15 @@ class _User {
 
   shoutMyName() {
     console.log("My!! name!! is!!", this.name);
+  }
+}
+
+class BookRef {
+  book = Reference(Book);
+  star: number;
+
+  constructor(s: number) {
+    this.star = s;
   }
 }
 
