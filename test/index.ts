@@ -5,14 +5,12 @@ import User from "./models/user";
   const myBook = await Book.findOne({ title: { "==": "unko!" } });
   myBook.hawl();
 
-  const user = await myBook.uploaded_by.get();
-
-  const secBook = await Book.findOne({ title: { "==": "今日もいい天気" } });
+  const user = await User.findOne({ name: { "==": "katsuo" } });
+  user.shoutMyName();
 
   const upBookRef = await user.uploaded_books.findOne();
 
-  // upBook.hawl();
-  // console.log(upBookRef);
+  (await upBookRef.book.get()).hawl();
 
   // const newBook = new Book("今日もいい天気");
   // newBook.hawl();

@@ -1,4 +1,3 @@
-import { getApps, initializeApp } from "firebase/app";
 import {
   addDoc,
   collection,
@@ -14,7 +13,10 @@ import {
   where,
   WhereFilterOp,
 } from "firebase/firestore";
+import { initAppIfNeeded } from "./init";
 import { Constructable, EntityType, WhereQuery } from "./types";
+
+type Collection = ReturnType<typeof Collection>;
 
 export function Collection<T extends Constructable>(
   path: string,
@@ -24,51 +26,11 @@ export function Collection<T extends Constructable>(
   const db = getFirestore();
   const ref = collection(db, path);
 
-  return class _Collection extends constructor {
-    private static entity_type: EntityType = "COLLECTION";
-    private static colRef = ref;
-    private static schemaFactory = constructor;
-
+  const _class = class extends constructor {
     private docRef: DocumentReference;
 
     constructor(...params: any[]) {
       super(...params);
-    }
-
-    public static async findMany(
-      q?: WhereQuery<InstanceType<typeof this>>
-    ): Promise<InstanceType<typeof this>[]> {
-      const docSnap = await getDocs(mergeToQuery(this.colRef, q || {}));
-
-      return docSnap.docs.map((d) => {
-        const _this: InstanceType<typeof this> = new this();
-        const mixedInSchema = {
-          ..._this.bindRef(d.ref),
-          ...this.prototype,
-          ...new constructor(),
-          ...constructor.prototype,
-        };
-        return mergeResult(d, mixedInSchema);
-      });
-    }
-
-    public static async findOne(q?: WhereQuery<InstanceType<T>>) {
-      const result = await this.findMany(q);
-      return result[0];
-    }
-
-    private static bindRef(ref: CollectionReference<DocumentData>) {
-      this.colRef = ref;
-      return this;
-    }
-
-    private bindRef(ref: DocumentReference) {
-      this.docRef = ref;
-      return this;
-    }
-
-    public static getFactory() {
-      return this.schemaFactory;
     }
 
     public async save() {
@@ -97,27 +59,64 @@ export function Collection<T extends Constructable>(
         await addDoc(collection(db, path), plainData);
       }
     }
+
+    static create(ref: DocumentReference) {
+      const _this = new this();
+      _this.docRef = ref;
+      return _this;
+    }
+  };
+
+  return class extends _class {
+    public static entity_type: EntityType = "COLLECTION";
+    private static colRef = ref;
+    private static schemaFactory = constructor;
+
+    public static async findMany(
+      q?: WhereQuery<InstanceType<T>>
+    ): Promise<InstanceType<typeof this>[]> {
+      const docSnap = await getDocs(mergeToQuery(this.colRef, q || {}));
+
+      return docSnap.docs.map((d) => {
+        const mixedInSchema = {
+          ...this.create(d.ref),
+          ...this.prototype,
+          ...new constructor(),
+          ...constructor.prototype,
+        };
+        return mergeResult(d, mixedInSchema);
+      });
+    }
+
+    public static async findOne(q?: WhereQuery<InstanceType<T>>) {
+      const result = await this.findMany(q);
+      return result[0];
+    }
+
+    static bindRef(ref: CollectionReference<DocumentData>) {
+      this.colRef = ref;
+      return this;
+    }
+
+    static getFactory() {
+      return this.schemaFactory;
+    }
   };
 }
 
-export function Reference<T extends ReturnType<typeof Collection>>(
-  colConstructor: T
-) {
-  return class _Reference extends colConstructor.getFactory() {
+type Reference = ReturnType<typeof Reference>;
+
+export function Reference<T extends Collection>(colConstructor: T) {
+  return class extends colConstructor.getFactory() {
     public static entity_type: EntityType = "REFERENCE";
     private static ref: DocumentReference;
 
     static async get(): Promise<InstanceType<T>> {
       const snap = await getDoc(this.ref);
 
-      const factory = colConstructor.getFactory() as ReturnType<
-        T["getFactory"]
-      >;
-
-      const _that = new colConstructor() as InstanceType<typeof colConstructor>;
-
+      const factory = colConstructor.getFactory();
       const mixiedInSchema = {
-        ..._that.bindRef(this.ref),
+        ...colConstructor.create(this.ref),
         ...colConstructor.prototype,
         ...new factory(),
         ...factory.prototype,
@@ -140,7 +139,7 @@ type MergedResult<T extends Constructable> = InstanceType<T>;
 
 function mergeResult<T extends Constructable>(
   docSnap: DocumentSnapshot,
-  schema: any
+  schema: InstanceType<Collection>
 ): MergedResult<T> {
   const fetchedData = docSnap.data();
 
@@ -148,7 +147,7 @@ function mergeResult<T extends Constructable>(
     if (fetchedData[key]) {
       const f = fetchedData[key];
       if (f["type"] === "document") {
-        const target = schema[key] as ReturnType<typeof Reference>;
+        const target = schema[key] as Reference;
 
         return {
           ...acc,
@@ -162,7 +161,7 @@ function mergeResult<T extends Constructable>(
       };
     }
 
-    const target = schema[key] as typeof this;
+    const target = schema[key] as Collection;
     if (target?.entity_type === "COLLECTION") {
       return {
         ...acc,
@@ -190,20 +189,4 @@ function mergeToQuery<T>(collcetionRef: CollectionReference, q: WhereQuery<T>) {
       )
     )
   );
-}
-
-export function initAppIfNeeded() {
-  // const firebaseConfig = require("../../../firebase-config");
-  if (getApps().length > 0) {
-    return;
-  }
-  const firebaseConfig = {
-    apiKey: "AIzaSyB7zEY1CAbiUPVTomZcOuVuIosBe0alXEQ",
-    authDomain: "fire-wrapper2.firebaseapp.com",
-    projectId: "fire-wrapper2",
-    storageBucket: "fire-wrapper2.appspot.com",
-    messagingSenderId: "47280289969",
-    appId: "1:47280289969:web:7c79968012beeff1da0a90",
-  };
-  initializeApp(firebaseConfig);
 }
