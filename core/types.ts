@@ -9,7 +9,7 @@ type SchemaExcludedRef<E> = {
   [key in keyof E]?: E[key] extends Function ? never : key;
 };
 
-type KeysExcludedRef<E> = Exclude<
+export type KeysExcludedRef<E> = Exclude<
   SchemaExcludedRef<E>[keyof SchemaExcludedRef<E>],
   undefined
 >;

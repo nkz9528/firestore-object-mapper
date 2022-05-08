@@ -8,13 +8,23 @@ import {
   getDoc,
   getDocs,
   getFirestore,
+  limit,
+  limitToLast,
+  orderBy,
+  OrderByDirection,
   query,
+  QueryConstraint,
   setDoc,
   where,
   WhereFilterOp,
 } from "firebase/firestore";
 import { initAppIfNeeded } from "./init";
-import { Constructable, EntityType, WhereQuery } from "./types";
+import {
+  Constructable,
+  EntityType,
+  KeysExcludedRef,
+  WhereQuery,
+} from "./types";
 
 type Collection = ReturnType<typeof Collection>;
 
@@ -72,11 +82,18 @@ export function Collection<T extends Constructable>(
     private static colRef = ref;
     private static schemaFactory = constructor;
 
+    private static queryConstraints: QueryConstraint[] = [];
+
     public static async findMany(
       q?: WhereQuery<InstanceType<T>>
     ): Promise<InstanceType<typeof this>[]> {
-      const docSnap = await getDocs(mergeToQuery(this.colRef, q || {}));
+      const whereQs = convertToQuery(q || {});
+      this.queryConstraints = this.queryConstraints.concat(whereQs);
 
+      const docSnap = await getDocs(
+        query(this.colRef, ...this.queryConstraints)
+      );
+      this.queryConstraints = [];
       return docSnap.docs.map((d) => {
         const mixedInSchema = {
           ...this.create(d.ref),
@@ -91,6 +108,24 @@ export function Collection<T extends Constructable>(
     public static async findOne(q?: WhereQuery<InstanceType<T>>) {
       const result = await this.findMany(q);
       return result[0];
+    }
+
+    public static orderBy(
+      field: KeysExcludedRef<InstanceType<T>>,
+      dir: OrderByDirection
+    ) {
+      this.queryConstraints.push(orderBy(field.toString(), dir));
+      return this;
+    }
+
+    public static limit(lim: number) {
+      this.queryConstraints.push(limit(lim));
+      return this;
+    }
+
+    public static limitToLast(lim: number) {
+      this.queryConstraints.push(limitToLast(lim));
+      return this;
     }
 
     static bindRef(ref: CollectionReference<DocumentData>) {
@@ -178,15 +213,12 @@ function mergeResult<T extends Constructable>(
   return data as MergedResult<T>;
 }
 
-function mergeToQuery<T>(collcetionRef: CollectionReference, q: WhereQuery<T>) {
-  return query(
-    collcetionRef,
-    ...Object.keys(q).map((key) =>
-      where(
-        key,
-        Object.keys(q[key])[0] as WhereFilterOp,
-        Object.values(q[key])[0]
-      )
+function convertToQuery<T>(q: WhereQuery<T>) {
+  return Object.keys(q).map((key) =>
+    where(
+      key,
+      Object.keys(q[key])[0] as WhereFilterOp,
+      Object.values(q[key])[0]
     )
   );
 }
