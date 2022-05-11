@@ -2,19 +2,11 @@ import Book from "./models/book";
 import User from "./models/user";
 
 (async () => {
-  const myBook = await Book.limit(10).findOne({ title: { "==": "unko!" } });
-  myBook.hawl();
+  const q = Book.orderBy("created", "desc").limit(5);
 
-  const user = await User.findOne({
-    name: { "==": "katsuo" },
-  });
-  user.shoutMyName();
+  const myBook = await q.next();
+  console.log(myBook.map((b) => b.title));
 
-  const upBookRef = await user.uploaded_books.findOne();
-
-  (await upBookRef.book.get()).hawl();
-
-  // const newBook = new Book("今日もいい天気");
-  // newBook.hawl();
-  // await newBook.save();
+  const nextBooks = await q.next();
+  console.log(nextBooks.map((b) => b.title));
 })();

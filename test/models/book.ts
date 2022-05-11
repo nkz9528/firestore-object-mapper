@@ -1,34 +1,17 @@
 import { Collection as Collection, Reference } from "../../core";
 import User from "./user";
 
-class _Book {
+class Book {
   title: string;
-  pages = Collection("pages", _Page);
-  uploaded_by = Reference(User);
-
-  constructor(title: string) {
-    this.title = title;
-  }
-
-  hawl() {
-    console.log("Woooooooh!!", this.title);
-  }
-}
-
-class _Page {
-  src: string;
+  thumnail: string;
+  created: Date = new Date();
   index: number;
 
-  constructor(src: string, index: number) {
-    this.src = src;
+  constructor(title: string, thumbnail: string, index: number) {
+    this.title = title;
+    this.thumnail = thumbnail;
     this.index = index;
-  }
-
-  shout() {
-    console.log("Gyaaaaaaa", this.src);
   }
 }
 
-const Book = Collection("Books", _Book);
-
-export default Book;
+export default Collection("books", Book);

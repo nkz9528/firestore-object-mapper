@@ -17,6 +17,8 @@ import {
   setDoc,
   where,
   WhereFilterOp,
+  startAfter,
+  QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { initAppIfNeeded } from "./init";
 import {
@@ -26,7 +28,7 @@ import {
   WhereQuery,
 } from "./types";
 
-type Collection = ReturnType<typeof Collection>;
+type TCollection = ReturnType<typeof Collection>;
 
 export function Collection<T extends Constructable>(
   path: string,
@@ -82,18 +84,28 @@ export function Collection<T extends Constructable>(
     private static colRef = ref;
     private static schemaFactory = constructor;
 
-    private static queryConstraints: QueryConstraint[] = [];
+    protected static queryConstraints: QueryConstraint[] = [];
 
-    public static async findMany(
-      q?: WhereQuery<InstanceType<T>>
-    ): Promise<InstanceType<typeof this>[]> {
-      const whereQs = convertToQuery(q || {});
-      this.queryConstraints = this.queryConstraints.concat(whereQs);
-
-      const docSnap = await getDocs(
-        query(this.colRef, ...this.queryConstraints)
-      );
+    public static async findMany(): Promise<InstanceType<typeof this>[]> {
+      const docs = await this.getDocs(this.queryConstraints);
       this.queryConstraints = [];
+      return docs;
+    }
+
+    private static cursor: QueryDocumentSnapshot<DocumentData>;
+
+    public static async next(): Promise<InstanceType<typeof this>[]> {
+      const q = this.queryConstraints.concat(
+        this.cursor ? [startAfter(this.cursor)] : []
+      );
+      const docs = await this.getDocs(q);
+      return docs;
+    }
+
+    static async getDocs(qs: QueryConstraint[]) {
+      const docSnap = await getDocs(query(this.colRef, ...qs));
+      this.cursor = docSnap.docs[docSnap.docs.length - 1];
+
       return docSnap.docs.map((d) => {
         const mixedInSchema = {
           ...this.create(d.ref),
@@ -105,9 +117,15 @@ export function Collection<T extends Constructable>(
       });
     }
 
-    public static async findOne(q?: WhereQuery<InstanceType<T>>) {
-      const result = await this.findMany(q);
+    public static async findOne() {
+      const result = await this.findMany();
       return result[0];
+    }
+
+    public static where(q?: WhereQuery<InstanceType<T>>) {
+      const whereQs = convertToQuery(q || {});
+      this.queryConstraints = this.queryConstraints.concat(whereQs);
+      return this;
     }
 
     public static orderBy(
@@ -141,7 +159,7 @@ export function Collection<T extends Constructable>(
 
 type Reference = ReturnType<typeof Reference>;
 
-export function Reference<T extends Collection>(colConstructor: T) {
+export function Reference<T extends TCollection>(colConstructor: T) {
   return class extends colConstructor.getFactory() {
     public static entity_type: EntityType = "REFERENCE";
     private static ref: DocumentReference;
@@ -174,7 +192,7 @@ type MergedResult<T extends Constructable> = InstanceType<T>;
 
 function mergeResult<T extends Constructable>(
   docSnap: DocumentSnapshot,
-  schema: InstanceType<Collection>
+  schema: InstanceType<T>
 ): MergedResult<T> {
   const fetchedData = docSnap.data();
 
@@ -196,7 +214,7 @@ function mergeResult<T extends Constructable>(
       };
     }
 
-    const target = schema[key] as Collection;
+    const target = schema[key] as TCollection;
     if (target?.entity_type === "COLLECTION") {
       return {
         ...acc,
