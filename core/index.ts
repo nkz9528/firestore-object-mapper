@@ -85,14 +85,12 @@ export function Collection<T extends Constructable>(
     private static schemaFactory = constructor;
 
     protected static queryConstraints: QueryConstraint[] = [];
+    private static cursor: QueryDocumentSnapshot<DocumentData>;
 
     public static async findMany(): Promise<InstanceType<typeof this>[]> {
       const docs = await this.getDocs(this.queryConstraints);
-      this.queryConstraints = [];
       return docs;
     }
-
-    private static cursor: QueryDocumentSnapshot<DocumentData>;
 
     public static async next(): Promise<InstanceType<typeof this>[]> {
       const q = this.queryConstraints.concat(
@@ -124,26 +122,29 @@ export function Collection<T extends Constructable>(
 
     public static where(q?: WhereQuery<InstanceType<T>>) {
       const whereQs = convertToQuery(q || {});
-      this.queryConstraints = this.queryConstraints.concat(whereQs);
-      return this;
+      return this.spawnNewQuery(whereQs);
     }
 
     public static orderBy(
       field: KeysExcludedRef<InstanceType<T>>,
       dir: OrderByDirection
     ) {
-      this.queryConstraints.push(orderBy(field.toString(), dir));
-      return this;
+      return this.spawnNewQuery([orderBy(field.toString(), dir)]);
     }
 
     public static limit(lim: number) {
-      this.queryConstraints.push(limit(lim));
-      return this;
+      return this.spawnNewQuery([limit(lim)]);
     }
 
     public static limitToLast(lim: number) {
-      this.queryConstraints.push(limitToLast(lim));
-      return this;
+      return this.spawnNewQuery([limitToLast(lim)]);
+    }
+
+    private static spawnNewQuery(qs: QueryConstraint[]) {
+      const c = Collection(path, constructor);
+      c.queryConstraints = this.queryConstraints.concat(qs);
+      c.bindRef(this.colRef);
+      return c;
     }
 
     static bindRef(ref: CollectionReference<DocumentData>) {

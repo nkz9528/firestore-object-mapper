@@ -6,6 +6,7 @@ class Book {
   thumnail: string;
   created: Date = new Date();
   index: number;
+  tags: string[] = [];
 
   constructor(title: string, thumbnail: string, index: number) {
     this.title = title;
