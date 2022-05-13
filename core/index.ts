@@ -40,6 +40,7 @@ export function Collection<T extends Constructable>(
 
   const _class = class extends constructor {
     private docRef: DocumentReference;
+    private id = "";
 
     constructor(...params: any[]) {
       super(...params);
@@ -87,12 +88,14 @@ export function Collection<T extends Constructable>(
     protected static queryConstraints: QueryConstraint[] = [];
     private static cursor: QueryDocumentSnapshot<DocumentData>;
 
-    public static async findMany(): Promise<InstanceType<typeof this>[]> {
+    public static async findMany(): Promise<
+      (InstanceType<T> & { id: string })[]
+    > {
       const docs = await this.getDocs(this.queryConstraints);
       return docs;
     }
 
-    public static async next(): Promise<InstanceType<typeof this>[]> {
+    public static async next(): Promise<(InstanceType<T> & { id: string })[]> {
       const q = this.queryConstraints.concat(
         this.cursor ? [startAfter(this.cursor)] : []
       );
@@ -195,7 +198,10 @@ function mergeResult<T extends Constructable>(
   docSnap: DocumentSnapshot,
   schema: InstanceType<T>
 ): MergedResult<T> {
-  const fetchedData = docSnap.data();
+  const fetchedData = {
+    ...docSnap.data(),
+    id: docSnap.id,
+  };
 
   const data = Object.keys(schema).reduce((acc, key) => {
     if (fetchedData[key]) {
