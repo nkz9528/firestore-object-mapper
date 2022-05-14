@@ -39,7 +39,7 @@ export function Collection<T extends Constructable>(
   const ref = collection(db, path);
 
   const _class = class extends constructor {
-    private docRef: DocumentReference;
+    private docRef: DocumentReference = undefined;
     private id = "";
 
     constructor(...params: any[]) {
