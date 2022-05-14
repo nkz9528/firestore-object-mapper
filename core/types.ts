@@ -1,4 +1,3 @@
-import { Collection, Reference } from ".";
 import { WhereFilterOp } from "firebase/firestore";
 
 export type WhereQuery<E> = {
@@ -15,7 +14,7 @@ export type KeysExcludedRef<E> = Exclude<
 >;
 
 export interface Constructable extends Function {
-  new (...args: any[]);
+  new (...args: any[]): any;
 }
 
 export type EntityType = "COLLECTION" | "REFERENCE";

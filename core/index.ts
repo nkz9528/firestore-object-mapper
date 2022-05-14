@@ -198,11 +198,10 @@ function mergeResult<T extends Constructable>(
   docSnap: DocumentSnapshot,
   schema: InstanceType<T>
 ): MergedResult<T> {
-  const fetchedData = {
+  const fetchedData: DocumentData & { id: string } = {
     ...docSnap.data(),
     id: docSnap.id,
   };
-
   const data = Object.keys(schema).reduce((acc, key) => {
     if (fetchedData[key]) {
       const f = fetchedData[key];
@@ -242,8 +241,8 @@ function convertToQuery<T>(q: WhereQuery<T>) {
   return Object.keys(q).map((key) =>
     where(
       key,
-      Object.keys(q[key])[0] as WhereFilterOp,
-      Object.values(q[key])[0]
+      Object.keys((q as any)[key])[0] as WhereFilterOp,
+      Object.values((q as any)[key])[0]
     )
   );
 }
