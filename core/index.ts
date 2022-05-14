@@ -19,7 +19,7 @@ import {
   WhereFilterOp,
   startAfter,
   QueryDocumentSnapshot,
-} from "firebase/firestore";
+} from "firebase/firestore/lite";
 import { initAppIfNeeded } from "./init";
 import {
   Constructable,
