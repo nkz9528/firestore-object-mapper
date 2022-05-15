@@ -88,6 +88,7 @@ export function Collection<T extends Constructable>(
 
     protected static queryConstraints: QueryConstraint[] = [];
     private static cursor: QueryDocumentSnapshot<DocumentData>;
+    private static hasMoreItems: boolean = true;
 
     public static async findMany(): Promise<
       (InstanceType<T> & { id: string })[]
@@ -97,6 +98,9 @@ export function Collection<T extends Constructable>(
     }
 
     public static async next(): Promise<(InstanceType<T> & { id: string })[]> {
+      if (!this.hasMoreItems) {
+        return [];
+      }
       const q = this.queryConstraints.concat(
         this.cursor ? [startAfter(this.cursor)] : []
       );
@@ -106,8 +110,11 @@ export function Collection<T extends Constructable>(
 
     static async getDocs(qs: QueryConstraint[]) {
       const docSnap = await getDocs(query(this.colRef, ...qs));
+      if (docSnap.docs.length === 0) {
+        this.hasMoreItems = false;
+        return [];
+      }
       this.cursor = docSnap.docs[docSnap.docs.length - 1];
-
       return docSnap.docs.map((d) => {
         const mixedInSchema = {
           ...this.create(d.ref),
