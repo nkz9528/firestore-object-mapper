@@ -93,8 +93,20 @@ export function Collection<T extends Constructable>(
     public static async findMany(): Promise<
       (InstanceType<T> & { id: string })[]
     > {
-      const docs = await this.getDocs(this.queryConstraints);
-      return docs;
+      const docSnap = await getDocs(
+        query(this.colRef, ...this.queryConstraints)
+      );
+      this.cursor = docSnap.docs[docSnap.docs.length - 1];
+
+      return docSnap.docs.map((d) => {
+        const mixedInSchema = {
+          ...this.create(d.ref),
+          ...this.prototype,
+          ...new constructor(),
+          ...constructor.prototype,
+        };
+        return mergeResult(d, mixedInSchema);
+      });
     }
 
     public static async next(): Promise<(InstanceType<T> & { id: string })[]> {
