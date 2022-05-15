@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2019",
+    "target": "ES5",
     "experimentalDecorators": true,
     "strict": true
   }
