@@ -126,7 +126,7 @@ export function Collection<T extends Constructable>(
 
     public static async findById(
       id: string
-    ): Promise<(InstanceType<T> & { id: string })[]> {
+    ): Promise<InstanceType<T> & { id: string }> {
       const path = this.colRef.path + "/" + id;
       const docSnap = await getDoc(doc(db, path));
       const mixedInSchema = {
