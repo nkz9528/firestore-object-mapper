@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  doc,
   CollectionReference,
   DocumentData,
   DocumentReference,
@@ -121,6 +122,20 @@ export function Collection<T extends Constructable>(
     public static async findOne() {
       const result = await this.findMany();
       return result[0];
+    }
+
+    public static async findById(
+      id: string
+    ): Promise<(InstanceType<T> & { id: string })[]> {
+      const path = this.colRef.path + "/" + id;
+      const docSnap = await getDoc(doc(db, path));
+      const mixedInSchema = {
+        ...this.create(docSnap.ref),
+        ...this.prototype,
+        ...new constructor(),
+        ...constructor.prototype,
+      };
+      return mergeResult(docSnap, mixedInSchema);
     }
 
     public static where(q?: WhereQuery<InstanceType<T>>) {
